@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flappy Chicken</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --kfc-red: #E50027;
+    --kfc-white: #FFFFFF;
+    --kfc-black: #000000;
+    --sand: #e6c280;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #111;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Press Start 2P', monospace;
+    overflow: hidden;
+  }
+
+  #gameWrapper {
+    position: relative;
+    width: 1024px;
+    height: 576px;
+    overflow: hidden;
+    border: 4px solid var(--kfc-red);
+    box-shadow: 0 0 20px rgba(229, 0, 39, 0.5);
+    background: #71c5cf; /* Fallback sky color */
+  }
+
+  canvas { display: block; }
+
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .hud-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.8);
+    border: 2px solid var(--kfc-red);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: #000;
+  }
+
+  .hud-icon { font-size: 16px; }
+  .hud-val { min-width: 32px; text-align: right; font-weight: bold; }
+
+  /* OVERLAY SCREENS */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(2px);
+  }
+
+  .screen.hidden { display: none; }
+
+  .screen-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 52px;
+    letter-spacing: 4px;
+    color: var(--kfc-white);
+    text-shadow: 4px 4px 0 var(--kfc-red), -2px -2px 0 var(--kfc-black);
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  .screen-sub {
+    font-size: 12px;
+    color: var(--kfc-white);
+    letter-spacing: 3px;
+    margin-bottom: 40px;
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    padding: 16px 32px;
+    border: 4px solid var(--kfc-white);
+    background: var(--kfc-red);
+    color: var(--kfc-white);
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+    margin: 6px;
+    text-transform: uppercase;
+    box-shadow: 4px 4px 0 #000;
+  }
+
+  .btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 #000;
+  }
+
+  .btn.danger {
+    background: #333;
+    border-color: #777;
+  }
+
+  .bird-emoji {
+    font-size: 64px;
+    animation: float 2s ease-in-out infinite;
+    margin-bottom: 20px;
+  }
+
+  @keyframes float {
+    0%,100% { transform: translateY(0px) rotate(-5deg); }
+    50%      { transform: translateY(-12px) rotate(5deg); }
+  }
+
+  /* Countdown */
+  #countdown {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 100px;
+    color: var(--kfc-white);
+    text-shadow: 4px 4px 0 var(--kfc-red), -2px -2px 0 var(--kfc-black);
+    animation: pulse 1s ease-out;
+  }
+
+  @keyframes pulse {
+    0%   { transform: scale(1.8); opacity: 0; }
+    30%  { transform: scale(1); opacity: 1; }
+    80%  { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.8); opacity: 0; }
+  }
+
+  /* Game over stats */
+  .go-stats {
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 320px;
+  }
+
+  .go-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 12px 18px;
+    background: rgba(255,255,255,0.9);
+    border: 3px solid var(--kfc-red);
+    border-radius: 4px;
+    color: #000;
+    box-shadow: 3px 3px 0 #000;
+  }
+
+  .go-stat-label { color: #444; }
+  .go-stat-val   { font-weight: bold; }
+
+  .stars {
+    font-size: 28px;
+    letter-spacing: 6px;
+    margin-bottom: 16px;
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  .go-title {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 42px;
+    color: var(--kfc-white);
+    text-shadow: 4px 4px 0 var(--kfc-red), -2px -2px 0 var(--kfc-black);
+    margin-bottom: 4px;
+  }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+
+</style>
+</head>
+<body>
+<div id="gameWrapper">
+
+  <!-- CANVAS -->
+  <canvas id="gameCanvas" width="1024" height="576"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-item">
+      <span class="hud-icon">🪙</span>
+      <span class="hud-val" id="coinVal">0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-icon">💎</span>
+      <span class="hud-val" id="diamondVal">0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-icon">🍗</span>
+      <span class="hud-val" id="levelVal">1</span>
+    </div>
+  </div>
+
+  <!-- LANDING MENU -->
+  <div id="menuScreen" class="screen">
+    <div class="bird-emoji">🐔</div>
+    <div class="screen-title">FLAPPY<br>CHICKEN</div>
+    <div class="screen-sub">KFC EDITION</div>
+    <button class="btn" onclick="startCountdown()">▶ PLAY</button>
+    <div style="margin-top:20px;font-size:10px;color:#fff;letter-spacing:2px;text-shadow:1px 1px 0 #000;">SPACE / TAP TO FLAP</div>
+  </div>
+
+  <!-- COUNTDOWN SCREEN -->
+  <div id="countdownScreen" class="screen hidden">
+    <div id="countdown">3</div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameOverScreen" class="screen hidden">
+    <div class="go-title">GAME OVER</div>
+    <div class="stars" id="goStars">⭐⭐⭐</div>
+    <div class="go-stats">
+      <div class="go-stat"><span class="go-stat-label">SCORE</span><span class="go-stat-val" id="goLevel">1</span></div>
+      <div class="go-stat"><span class="go-stat-label">COINS</span><span class="go-stat-val" id="goCoins">0 🪙</span></div>
+      <div class="go-stat"><span class="go-stat-label">DIAMONDS</span><span class="go-stat-val" id="goDiamonds">0 💎</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="startCountdown()">↺ RETRY</button>
+      <button class="btn danger" onclick="showMenu()">✕ EXIT</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ─── ASSETS ───────────────────────────────────────────────────
+const assets = {
+  bg: new Image(),
+  pipes: new Image(),
+  chicken: new Image()
+};
+
+assets.bg.src = './flappychick/Bg New.png';
+assets.pipes.src = './flappychick/Pipes.png';
+assets.chicken.src = './flappychick/chicke.png';
+
+let loadedImages = 0;
+Object.values(assets).forEach(img => {
+  img.onload = () => {
+    loadedImages++;
+    // We launch main loop immediately, assets arrive when ready
+  };
+});
+
+// ─── GAME STATE ───────────────────────────────────────────────
+let state = 'menu'; // menu | countdown | playing | dead
+let coins = 0, diamonds = 0, level = 1, pipesPassed = 0;
+let frameCount = 0, raf;
+
+// ─── BIRD ─────────────────────────────────────────────────────
+const bird = {
+  x: 200, y: 280, vy: 0,
+  w: 54, h: 40,
+  gravity: 0.42, jump: -8.5,
+  rotation: 0,
+  reset() { this.x=200; this.y=280; this.vy=0; this.rotation=0; }
+};
+
+// ─── PIPES ─────────────────────────────────────────────────────
+const GAP = 180;
+let pipes = [];
+const PIPE_W = 80, PIPE_SPEED_BASE = 3.5;
+let pipeSpeed = PIPE_SPEED_BASE;
+
+function spawnPipe() {
+  const minTop = 60, maxTop = H - 120 - GAP; // 120 is floor height
+  const topH = minTop + Math.random() * (maxTop - minTop);
+  pipes.push({ x: W + 50, topH, passed: false });
+}
+
+// ─── COLLECTIBLES ─────────────────────────────────────────────
+let collectibles = [];
+
+function spawnCollectible(x) {
+  if (Math.random() < 0.65) {
+    const pipe = pipes[pipes.length - 1];
+    if (!pipe) return;
+    const cx = x + PIPE_W / 2 + 80 + Math.random() * 80;
+    const cy = pipe.topH + GAP / 2 + (Math.random() - 0.5) * 60;
+    const isDiamond = Math.random() < 0.18;
+    collectibles.push({ x: cx, y: cy, type: isDiamond ? 'diamond' : 'coin',
+      r: isDiamond ? 16 : 14, collected: false, anim: 0,
+      vy: (Math.random() - 0.5) * 0.4 });
+  }
+}
+
+// ─── PARTICLES & POPUPS ───────────────────────────────────────
+let particles = [];
+let popups = [];
+
+function burst(x, y, color, count = 10) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = 1.5 + Math.random() * 4;
+    particles.push({ x, y, vx: Math.cos(angle)*spd, vy: Math.sin(angle)*spd,
+      life: 1, color, size: 3 + Math.random() * 4 });
+  }
+}
+
+// ─── SCROLL X ─────────────────────────────────────────────────
+let bgScroll = 0;
+let floorScroll = 0;
+
+const FLOOR_H = 80;
+const FLOOR_Y = H - FLOOR_H;
+
+// ─── DRAW HELPERS ─────────────────────────────────────────────
+
+function drawBg() {
+  if (loadedImages === 3) {
+    // Parallax background (slowest)
+    bgScroll = (bgScroll - pipeSpeed * 0.2) % W;
+    ctx.drawImage(assets.bg, bgScroll, 0, W, H);
+    ctx.drawImage(assets.bg, bgScroll + W, 0, W, H);
+  } else {
+    ctx.fillStyle = '#71c5cf';
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+
+
+function drawFloor() {
+  floorScroll = (floorScroll - pipeSpeed) % 60;
+  
+  // Floor base
+  ctx.fillStyle = '#e6c280'; // Sand
+  ctx.fillRect(0, FLOOR_Y, W, FLOOR_H);
+
+  // Red/white tile checkerboard edge
+  const tileSize = 30;
+  for(let x = (floorScroll % (tileSize*2)) - (tileSize*2); x < W; x += tileSize) {
+    // Top row
+    ctx.fillStyle = (Math.abs(Math.floor(x/tileSize)) % 2 === 0) ? '#E50027' : '#FFFFFF';
+    ctx.fillRect(x, FLOOR_Y, tileSize + 1, 15);
+    
+    // Bottom border for the tile
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x, FLOOR_Y + 15, tileSize + 1, 3);
+  }
+
+  // Texture specs on sand
+  ctx.fillStyle = '#cfad72';
+  for(let x = 0; x < W; x += 45) {
+     ctx.fillRect(x + ((floorScroll*0.5)%45), FLOOR_Y + 25, 4, 2);
+     ctx.fillRect(x + 20 + ((floorScroll*0.5)%45), FLOOR_Y + 45, 3, 3);
+  }
+  
+  // Top thick border
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, FLOOR_Y, W, 3);
+}
+
+function drawPipe(p) {
+  if (loadedImages === 3) {
+    const pw = assets.pipes.width;
+    const ph = assets.pipes.height;
+    // We use the whole image since the user cropped it to a single pipe
+    const srcW = pw;
+    const srcH = ph;
+
+    // Draw TOP pipe (inverted)
+    ctx.save();
+    ctx.translate(p.x, p.topH);
+    ctx.scale(1, -1);
+    ctx.drawImage(assets.pipes, 0, 0, srcW, srcH, 0, 0, PIPE_W, srcH);
+    ctx.restore();
+
+    // Draw BOTTOM pipe
+    const botY = p.topH + GAP;
+    ctx.drawImage(assets.pipes, 0, 0, srcW, srcH, p.x, botY, PIPE_W, srcH);
+
+  } else {
+    // Fallback block drawing
+    ctx.fillStyle = '#E50027'; // red pipe
+    ctx.fillRect(p.x, 0, PIPE_W, p.topH);
+    ctx.fillRect(p.x, p.topH + GAP, PIPE_W, H);
+  }
+}
+
+function drawBird() {
+  ctx.save();
+  ctx.translate(bird.x, bird.y);
+
+  // Rotation based on velocity
+  bird.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, bird.vy * 0.08));
+  ctx.rotate(bird.rotation);
+
+  if (loadedImages === 3) {
+    // Shift slightly to center image
+    ctx.drawImage(assets.chicken, -bird.w / 2, -bird.h / 2, bird.w, bird.h);
+  } else {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(-bird.w/2, -bird.h/2, bird.w, bird.h);
+  }
+
+  ctx.restore();
+}
+
+function drawCollectible(c) {
+  if (c.collected) return;
+  c.anim += 0.05;
+  c.y += c.vy;
+  ctx.save();
+  ctx.translate(c.x, c.y + Math.sin(c.anim) * 4);
+
+  if (c.type === 'coin') {
+    ctx.fillStyle = '#ffd700';
+    ctx.beginPath(); ctx.arc(0, 0, c.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 12px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('$', 0, 1);
+  } else {
+    // Diamond
+    const s = c.r;
+    ctx.fillStyle = '#a8edff';
+    ctx.beginPath();
+    ctx.moveTo(0, -s);
+    ctx.lineTo(s * 0.7, -s * 0.2);
+    ctx.lineTo(s * 0.7, s * 0.3);
+    ctx.lineTo(0, s);
+    ctx.lineTo(-s * 0.7, s * 0.3);
+    ctx.lineTo(-s * 0.7, -s * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.15;
+    p.life -= 0.03;
+  });
+  particles = particles.filter(p => p.life > 0);
+}
+
+function drawPopups() {
+  popups.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.font = 'bold 14px "Press Start 2P"';
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 4;
+    ctx.textAlign = 'center';
+    ctx.fillText(p.text, p.x, p.y);
+    ctx.restore();
+    p.y -= 1.2; p.life -= 0.02;
+  });
+  popups = popups.filter(p => p.life > 0);
+}
+
+// ─── COLLISION ────────────────────────────────────────────────
+
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
+}
+
+// ─── LEVEL / SPEED ────────────────────────────────────────────
+
+function updateLevel() {
+  level = 1 + pipesPassed;
+  pipeSpeed = PIPE_SPEED_BASE + Math.floor(pipesPassed / 4) * 0.4;
+}
+
+// ─── MAIN LOOP ────────────────────────────────────────────────
+
+let lastPipeFrame = 0;
+
+function gameLoop() {
+  raf = requestAnimationFrame(gameLoop);
+  frameCount++;
+
+  drawBg();
+  drawFloor(); // Needs to be drawn before pipes overlap, wait no, pipes go behind floor?
+  // Let's draw floor after pipes
+
+  if (state !== 'playing') {
+    drawBird();
+    drawFloor();
+    drawParticles();
+    drawPopups();
+    return;
+  }
+
+  // Spawn pipes
+  const pipeInterval = Math.max(90, 140 - Math.floor(pipesPassed / 3) * 5);
+  if (frameCount - lastPipeFrame > pipeInterval) {
+    spawnPipe();
+    spawnCollectible(W + 50);
+    lastPipeFrame = frameCount;
+  }
+
+  // Update bird
+  bird.vy += bird.gravity;
+  bird.y  += bird.vy;
+
+  // Render Pipes Behind Bird
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    drawPipe(pipes[i]);
+  }
+
+  // Floor drawn OVER pipes but UNDER bird (or OVER bird? usually over pipes, under bird)
+  drawFloor();
+
+  // Bird hit floor or ceiling
+  if (bird.y + bird.h / 2 > FLOOR_Y || bird.y - bird.h / 2 < 0) {
+    die(); return;
+  }
+
+  // Update logic
+  // Shave off a bit of hitbox for fairness
+  const bx = bird.x - bird.w / 2 + 10;
+  const by = bird.y - bird.h / 2 + 10;
+  const bw = bird.w - 20, bh = bird.h - 20;
+
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    const p = pipes[i];
+    p.x -= pipeSpeed;
+    if (p.x + PIPE_W < -50) { pipes.splice(i, 1); continue; }
+
+    // Collision Check
+    if (
+      rectsOverlap(bx, by, bw, bh, p.x, 0, PIPE_W, p.topH) ||
+      rectsOverlap(bx, by, bw, bh, p.x, p.topH + GAP, PIPE_W, H)
+    ) { die(); return; }
+
+    // Passed pipe
+    if (!p.passed && p.x + PIPE_W < bird.x) {
+      p.passed = true;
+      pipesPassed++;
+      updateLevel();
+      document.getElementById('levelVal').textContent = level;
+    }
+  }
+
+  // Update & draw collectibles
+  for (let i = collectibles.length - 1; i >= 0; i--) {
+    const c = collectibles[i];
+    c.x -= pipeSpeed;
+    if (c.x + c.r < -20) { collectibles.splice(i, 1); continue; }
+    drawCollectible(c);
+
+    if (!c.collected) {
+      const dx = bird.x - c.x, dy = bird.y - c.y;
+      if (Math.sqrt(dx*dx + dy*dy) < bird.w / 2 + c.r) {
+        c.collected = true;
+        if (c.type === 'coin') {
+          coins++;
+          document.getElementById('coinVal').textContent = coins;
+          burst(c.x, c.y, '#ffd700', 12);
+          popups.push({ x: c.x, y: c.y, text: '+1🪙', color: '#ffd700', life: 1 });
+        } else {
+          diamonds++;
+          document.getElementById('diamondVal').textContent = diamonds;
+          burst(c.x, c.y, '#a8edff', 16);
+          popups.push({ x: c.x, y: c.y, text: '+1💎', color: '#a8edff', life: 1 });
+        }
+        collectibles.splice(i, 1);
+      }
+    }
+  }
+
+  drawBird();
+  drawParticles();
+  drawPopups();
+}
+
+// ─── DEATH ────────────────────────────────────────────────────
+
+function die() {
+  state = 'dead';
+  burst(bird.x, bird.y, '#FFFFFF', 40); // Feathers
+  burst(bird.x, bird.y, '#E50027', 20); // KFC Red
+
+  // Stars rating
+  let starCount = 1;
+  if (level >= 10) starCount = 2;
+  if (level >= 25) starCount = 3;
+  document.getElementById('goStars').textContent = '⭐'.repeat(starCount) + '☆'.repeat(3 - starCount);
+  document.getElementById('goLevel').textContent = level;
+  document.getElementById('goCoins').textContent = coins + ' 🪙';
+  document.getElementById('goDiamonds').textContent = diamonds + ' 💎';
+
+  setTimeout(() => {
+    document.getElementById('gameOverScreen').classList.remove('hidden');
+  }, 600);
+}
+
+// ─── FLAP ─────────────────────────────────────────────────────
+
+function flap() {
+  if (state !== 'playing') return;
+  bird.vy = bird.jump;
+  burst(bird.x - 15, bird.y + 10, '#FFFFFF', 5); // Flap feathers
+}
+
+document.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); flap(); } });
+canvas.addEventListener('mousedown', flap);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); flap(); }, { passive: false });
+
+// ─── UI CONTROLS ──────────────────────────────────────────────
+
+function showMenu() {
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  document.getElementById('menuScreen').classList.remove('hidden');
+  state = 'menu';
+  resetGame();
+}
+
+function resetGame() {
+  pipes = []; collectibles = []; particles = []; popups = [];
+  bird.reset();
+  coins = 0; diamonds = 0; level = 1; pipesPassed = 0;
+  pipeSpeed = PIPE_SPEED_BASE; lastPipeFrame = 0;
+  bgScroll = 0; floorScroll = 0;
+  document.getElementById('coinVal').textContent = '0';
+  document.getElementById('diamondVal').textContent = '0';
+  document.getElementById('levelVal').textContent = '1';
+}
+
+function startCountdown() {
+  document.getElementById('menuScreen').classList.add('hidden');
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  document.getElementById('countdownScreen').classList.remove('hidden');
+  state = 'countdown';
+  resetGame();
+
+  let count = 3;
+  const el = document.getElementById('countdown');
+
+  function tick() {
+    el.style.animation = 'none';
+    el.offsetHeight; // reflow
+    el.style.animation = 'pulse 1s ease-out';
+    el.textContent = count;
+
+    if (count === 0) {
+      setTimeout(() => {
+        document.getElementById('countdownScreen').classList.add('hidden');
+        state = 'playing';
+        lastPipeFrame = frameCount;
+      }, 600);
+      return;
+    }
+    count--;
+    setTimeout(tick, 900);
+  }
+  tick();
+}
+
+// ─── LAUNCH ───────────────────────────────────────────────────
+if (!raf) gameLoop();
+</script>
+</body>
+</html>
