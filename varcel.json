@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/flappy_bird.html"
+    }
+  ]
+}
